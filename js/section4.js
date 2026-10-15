@@ -96,6 +96,7 @@ barSvg.append('text')
 // States should be on the y-axis and gas price on the x-axis, i.e. bars should be horizontal;
 // make the bars orange; add a title and axis labels.
 
+
 // prepare data
 energyData.sort((a, b) => parseFloat(b.gas) - parseFloat(a.gas)); // Sort data by gas price (descending)
 let top15Gas = energyData.slice(0, 15); // Get top 15 states
@@ -107,18 +108,68 @@ const hBarWidth = 400 - hBarMargin.left - hBarMargin.right;
 const hBarHeight = 500 - hBarMargin.top - hBarMargin.bottom;
 
 // Create SVG for horizontal bar chart
-
+const hbarSvg = d3.select('#demo-4')
+    .append('svg')
+    .attr('viewBox', `0 0 ${hBarWidth + hBarMargin.left + hBarMargin.right} ${hBarHeight + hBarMargin.top + hBarMargin.bottom}`)
+    .attr('preserveAspectRatio', 'xMidYMid meet')
+    .append('g')
+    .attr('transform', `translate(${hBarMargin.left},${hBarMargin.top})`);
 
 // Create scales for the horizontal bar chart
+// X scale - categorical scale for states
+const xXBarScale = d3.scaleBand()
+    .domain(top15.map(d => d.state)) // Input: state names
+    .range([0, hBarWidth]) // Output: width of the chart
+    .padding(0.25); // Padding between bars
+
+// Y scale - linear scale for electricity prices
+const yYBarScale = d3.scaleLinear()
+    .domain([0, d3.max(top15, d => d.elec)]) // Input: from 0 to max elec price in top 15
+    .range([hBarHeight, 0]); // Output: height of the chart (inverted because SVG y=0 is at the top)
 
 
 // Create axes and append them to the svg
+const xXAxis = d3.axisBottom(xXBarScale);
 
+hbarSvg.append('g')
+    .attr('transform', `translate(0, ${hBarHeight})`) // Move x axis to the bottom of the chart
+    .call(xXAxis)
+    .selectAll('text') // Rotate x axis labels for better readability
+    .attr('transform', 'rotate(-45)')
+    .style('text-anchor', 'end');
+
+// Y axis
+const yYAxis = d3.axisLeft(yYBarScale)
+    .ticks(5)
+    .tickFormat(d => `$${d.toFixed(2)}`); // Set number of ticks on y axis
+
+hbarSvg.append('g')
+    .call(yYAxis);
 
 // Create and append bars to the chart
-
+hbarSvg.selectAll('rect')
+    .data(top15)
+    .join('rect')
+    .attr('x', d => xXBarScale(d.state)) // Set x position based on state
+    .attr('y', d => yYBarScale(d.elec)) // Set y position based on electricity  price
+    .attr('width', xXBarScale.bandwidth()) // Set width of bars based on scale
+    .attr('height', d => hBarHeight - yYBarScale(d.elec)) // Set height of bars based on electricity price
+    .attr('fill', 'steelblue') // Set bar colorh
 
 // Chart title
-
+hbarSvg.append('text')
+    .attr('x', hBarWidth / 2) // Center the title horizontally
+    .attr('y', -10) // Position the title above the chart
+    .attr('text-anchor', 'middle') // Center the text
+    .style('font-size', '16px') 
+    .style('font-weight', 'bold')
+    .text('Top 15 States by Electricity Price');
 
 // X axis label
+hbarSvg.append('text')
+    .attr('transform', 'rotate(-90)') // Rotate the text to be vertical
+    .attr('x', -hBarHeight / 2) // Center the label vertically along the y axis
+    .attr('y', -55) // Position the label to the left of the y axis
+    .attr('text-anchor', 'middle') // Center the text
+    .style('font-size', '12px')
+    .text('Electricity Price (per kWh)')
